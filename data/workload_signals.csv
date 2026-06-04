@@ -1,0 +1,6 @@
+employee_id,learner_id,meeting_hours_per_week,focus_hours_per_week,preferred_learning_slot
+EMP-001,L-1001,22,10,Morning
+EMP-002,L-1002,15,18,Afternoon
+EMP-003,L-1003,18,14,Morning
+EMP-004,L-1004,25,8,Evening
+EMP-005,L-1005,12,20,Morning

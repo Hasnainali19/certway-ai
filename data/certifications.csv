@@ -1,0 +1,5 @@
+certification,role,skills,recommended_hours,passing_practice_score
+AZ-204,Cloud Engineer,"API Development; Azure Functions; Azure Storage; Authentication",20,75
+AZ-400,DevOps Engineer,"CI/CD; Monitoring; GitHub Actions; Infrastructure as Code",25,75
+DP-203,Data Engineer,"Data Pipelines; Azure Data Factory; Data Lake; Synapse Analytics",22,75
+AI-102,AI Engineer,"Azure AI Services; Responsible AI; Search; Conversational AI",24,75

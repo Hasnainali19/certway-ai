@@ -1,0 +1,6 @@
+learner_id,name,role,certification,practice_score_avg,hours_studied,exam_outcome
+L-1001,Alex Morgan,Cloud Engineer,AZ-204,67,18,Not Ready
+L-1002,Sam Rivera,DevOps Engineer,AZ-400,82,24,Ready
+L-1003,Jordan Lee,Data Engineer,DP-203,74,20,Almost Ready
+L-1004,Taylor Kim,AI Engineer,AI-102,61,12,At Risk
+L-1005,Casey Saiyed,Cloud Engineer,AZ-204,79,23,Ready
