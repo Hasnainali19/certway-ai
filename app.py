@@ -2,7 +2,7 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-from utils.azure_client import azure_ai_enabled, generate_ai_recommendation
+from utils.azure_client import azure_foundry_status, generate_ai_recommendation
 
 
 # -----------------------------
@@ -270,6 +270,97 @@ def load_knowledge_document():
         return file.read()
 
 
+@st.cache_data
+def parse_certification_guide():
+    guide = load_knowledge_document()
+    entries = {}
+    current_role = None
+    current_certification = None
+    current_topics = []
+    in_topics = False
+
+    def commit_section():
+        if not current_role or not current_certification or not current_topics:
+            return
+
+        entries[(current_role, current_certification)] = {
+            "role": current_role,
+            "certification": current_certification,
+            "topics": current_topics,
+            "source_section": f"Engineering Certification Enablement Guide > {current_role}",
+        }
+
+    for raw_line in guide.splitlines():
+        line = raw_line.strip()
+
+        if line.startswith("## "):
+            commit_section()
+            current_role = line.replace("## ", "", 1).strip()
+            current_certification = None
+            current_topics = []
+            in_topics = False
+            continue
+
+        if not current_role:
+            continue
+
+        if line.lower().startswith("primary certification:"):
+            current_certification = line.split(":", 1)[1].strip()
+            continue
+
+        if line.lower() == "recommended topics:":
+            in_topics = True
+            continue
+
+        if in_topics and line.startswith("- "):
+            current_topics.append(line.replace("- ", "", 1).strip())
+            continue
+
+        if in_topics and line:
+            in_topics = False
+
+    commit_section()
+    return entries
+
+
+def guide_entry_for(row):
+    guide_entries = parse_certification_guide()
+    role = str(row["role"])
+    certification = str(row["certification"])
+
+    if (role, certification) in guide_entries:
+        return guide_entries[(role, certification)]
+
+    for entry in guide_entries.values():
+        if entry["certification"] == certification:
+            return entry
+
+    return None
+
+
+def guide_topic_records(row):
+    guide_entry = guide_entry_for(row)
+
+    if guide_entry:
+        source_section = (
+            f"{guide_entry['source_section']} ({guide_entry['certification']})"
+        )
+        return [
+            {"Topic": topic, "Source Section": source_section}
+            for topic in guide_entry["topics"]
+        ]
+
+    skills = str(row["skills"]).split(";")
+    return [
+        {
+            "Topic": skill.strip(),
+            "Source Section": "Fallback role-to-skill mapping (data/certifications.csv)",
+        }
+        for skill in skills
+        if skill.strip()
+    ]
+
+
 def calculate_risk(row):
     score_gap = row["passing_practice_score"] - row["practice_score_avg"]
     high_meeting_load = row["meeting_hours_per_week"] > 20
@@ -285,8 +376,7 @@ def calculate_risk(row):
 
 
 def learning_path_agent(row):
-    skills = str(row["skills"]).split(";")
-    return [skill.strip() for skill in skills if skill.strip()]
+    return [record["Topic"] for record in guide_topic_records(row)]
 
 
 def readiness_signal_table(row):
@@ -459,60 +549,105 @@ def engagement_agent(row):
 
 def assessment_agent(row):
     certification = row["certification"]
-    skills = learning_path_agent(row)
+    topic_records = guide_topic_records(row)
 
     questions = []
 
-    for index, skill in enumerate(skills[:5], start=1):
+    for index, record in enumerate(topic_records[:5], start=1):
+        topic = record["Topic"]
         questions.append(
             {
-                "Question": f"{index}. In the context of {certification}, explain why {skill} is important for this role.",
+                "Question": f"{index}. In the context of {certification}, explain why {topic} is important for this role.",
+                "Grounded Topic": topic,
                 "Answer Guide": (
-                    f"A strong answer connects {skill} to real-world {row['role']} tasks, "
-                    "mentions tradeoffs or operational impact, and references approved certification topics."
+                    f"A strong answer connects {topic} to real-world {row['role']} tasks, "
+                    "mentions tradeoffs or operational impact, and stays within the approved guide section."
                 ),
-                "Grounding": "Synthetic engineering certification guide",
+                "Source Section": record["Source Section"],
             }
         )
 
     return pd.DataFrame(questions)
 
 
+def format_signal_evidence(signal_df):
+    return "; ".join(
+        (
+            f"{signal['Signal']}: {signal['Observed']} vs {signal['Target']} "
+            f"({signal['Status']})"
+        )
+        for _, signal in signal_df.iterrows()
+    )
+
+
 def agent_workflow_trace(row):
     decision = readiness_decision(row)
-    topics = ", ".join(learning_path_agent(row))
+    signal_df = readiness_signal_table(row)
+    attention_signals = signal_df[signal_df["Status"] == "Needs attention"]
+    topic_records = guide_topic_records(row)
+    topics = ", ".join(record["Topic"] for record in topic_records)
+    source_sections = sorted({record["Source Section"] for record in topic_records})
+    source_summary = ", ".join(source_sections)
+    engagement = engagement_agent(row)
+
+    if attention_signals.empty:
+        readiness_basis = "All readiness signals are currently on track."
+        manager_handoff = "Share final practice-check guidance and keep the current learning rhythm visible."
+    else:
+        readiness_basis = "; ".join(attention_signals["Reasoning"].tolist())
+        manager_handoff = engagement["Support suggestion"]
 
     return [
         {
             "Agent": "Orchestrator Agent",
-            "Evidence": f"{row['name']} is preparing for {row['certification']} as a {row['role']}.",
-            "Decision": "Route the profile through learning path, study planning, assessment, engagement, and manager insight agents.",
+            "Evidence": (
+                f"{row['name']} is preparing for {row['certification']} as a {row['role']}; "
+                f"{len(attention_signals)} of {len(signal_df)} readiness signals need attention."
+            ),
+            "Decision": (
+                "Route the profile through grounded learning path lookup, readiness reasoning, "
+                "assessment, study planning, engagement, and manager handoff."
+            ),
         },
         {
             "Agent": "Learning Path Curator Agent",
-            "Evidence": f"Role-to-certification mapping produced these grounded topics: {topics}.",
-            "Decision": "Prioritize certification topics from the approved synthetic guide before generic advice.",
+            "Evidence": f"Guide source {source_summary} produced these topics: {topics}.",
+            "Decision": "Use extracted guide topics as the learning path before any CSV fallback.",
         },
         {
             "Agent": "Readiness Reasoning Agent",
-            "Evidence": (
-                f"Practice score {row['practice_score_avg']}% vs target {row['passing_practice_score']}%; "
-                f"{row['hours_studied']} of {row['recommended_hours']} recommended study hours complete."
-            ),
+            "Evidence": format_signal_evidence(signal_df),
             "Decision": f"Classify current stance as {row['Risk Level']} because {decision['Primary constraint'].lower()}",
+        },
+        {
+            "Agent": "Assessment Agent",
+            "Evidence": (
+                f"{len(topic_records)} grounded topic(s) available from {source_summary}; "
+                f"practice score is {row['practice_score_avg']}% against a {row['passing_practice_score']}% target."
+            ),
+            "Decision": "Generate practice prompts only from the approved guide topics and show source sections.",
         },
         {
             "Agent": "Study Plan Generator Agent",
             "Evidence": (
                 f"{row['focus_hours_per_week']} focus hours/week, "
-                f"{row['meeting_hours_per_week']} meeting hours/week, preferred slot: {row['preferred_learning_slot']}."
+                f"{row['meeting_hours_per_week']} meeting hours/week, preferred slot: {row['preferred_learning_slot']}; "
+                f"readiness basis: {readiness_basis}"
             ),
             "Decision": "Adjust pacing and study block size to match workload capacity.",
         },
         {
             "Agent": "Engagement Agent",
             "Evidence": f"Risk level is {row['Risk Level']} with workload and focus constraints included.",
-            "Decision": engagement_agent(row)["Support suggestion"],
+            "Decision": engagement["Support suggestion"],
+        },
+        {
+            "Agent": "Manager Insights Agent",
+            "Evidence": (
+                f"Manager handoff uses learner-level risk ({row['Risk Level']}) and primary constraint: "
+                f"{decision['Primary constraint']}"
+            ),
+            "Decision": f"Provide manager-safe support guidance: {manager_handoff}",
         },
     ]
 
@@ -612,10 +747,14 @@ inject_custom_css()
 st.sidebar.title("🎓 Certway AI")
 st.sidebar.write("Multi-Agent Certification Coach")
 
-if azure_ai_enabled():
-    st.sidebar.success("Azure AI Foundry Mode: Enabled")
+foundry_status = azure_foundry_status()
+
+if foundry_status["state"] == "missing_config":
+    st.sidebar.warning(f"Azure AI Foundry Mode: {foundry_status['label']}")
 else:
-    st.sidebar.info("Azure AI Foundry Mode: Local Prototype")
+    st.sidebar.info(f"Azure AI Foundry Mode: {foundry_status['label']}")
+
+st.sidebar.caption(foundry_status["detail"])
 
 page = st.sidebar.radio(
     "Choose a page",
@@ -809,7 +948,7 @@ elif page == "Learner Coach":
     with foundry_tab:
         st.subheader("Microsoft Foundry AI Recommendation")
         st.caption(
-            "Uses the safe local rule-based fallback unless USE_AZURE_AI=true is configured in a private .env file."
+            f"{foundry_status['label']}: {foundry_status['detail']}"
         )
 
         foundry_prompt = build_foundry_prompt(learner)
