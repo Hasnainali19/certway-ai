@@ -27,6 +27,40 @@ def get_azure_config():
     }
 
 
+def _has_configured_endpoint(project_endpoint: str | None) -> bool:
+    return bool(project_endpoint) and project_endpoint != "your_project_endpoint_here"
+
+
+def azure_foundry_status():
+    """
+    Reports the current Foundry integration state honestly.
+
+    This app does not make live Azure model calls yet, so a configured endpoint is
+    shown as a Foundry-ready placeholder instead of an enabled integration.
+    """
+    if not azure_ai_enabled():
+        return {
+            "state": "local",
+            "label": "Local Prototype",
+            "detail": "Using safe local rule-based recommendations only.",
+        }
+
+    config = get_azure_config()
+
+    if not _has_configured_endpoint(config["project_endpoint"]):
+        return {
+            "state": "missing_config",
+            "label": "Foundry Config Missing",
+            "detail": "USE_AZURE_AI=true, but no usable AZURE_AI_PROJECT_ENDPOINT is configured.",
+        }
+
+    return {
+        "state": "placeholder",
+        "label": "Foundry-Ready Placeholder",
+        "detail": "Foundry configuration is present, but no live Azure model call is implemented.",
+    }
+
+
 def _extract_prompt_fields(prompt: str) -> dict:
     """
     Pulls simple key-value fields from the synthetic prompt.
@@ -110,13 +144,13 @@ def generate_ai_recommendation(prompt: str) -> str:
 
     config = get_azure_config()
 
-    if not config["project_endpoint"]:
+    if not _has_configured_endpoint(config["project_endpoint"]):
         return (
-            "Azure AI Foundry is enabled, but AZURE_AI_PROJECT_ENDPOINT is missing. "
-            "Please add the endpoint to your local .env file."
+            "Foundry Config Missing: USE_AZURE_AI is true, but no usable "
+            "AZURE_AI_PROJECT_ENDPOINT is configured. No Azure model call was made."
         )
 
     return (
-        "Azure AI Foundry integration placeholder is active. "
-        "The next version will connect this function to your deployed Foundry model."
+        "Foundry-ready placeholder: configuration was detected, but this demo does not "
+        "make a live Azure model call yet. The recommendation remains local and synthetic."
     )
