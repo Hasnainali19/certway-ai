@@ -132,6 +132,60 @@ def assessment_agent(row):
 
     return pd.DataFrame(questions)
 
+def agent_workflow_trace(row):
+    return [
+        {
+            "Agent": "Orchestrator Agent",
+            "Action": f"Received learner profile for {row['name']} preparing for {row['certification']}."
+        },
+        {
+            "Agent": "Learning Path Curator Agent",
+            "Action": f"Mapped the {row['role']} role to certification topics: {row['skills']}."
+        },
+        {
+            "Agent": "Study Plan Generator Agent",
+            "Action": f"Created a study plan using {row['focus_hours_per_week']} focus hours/week and preferred slot: {row['preferred_learning_slot']}."
+        },
+        {
+            "Agent": "Assessment Agent",
+            "Action": f"Checked readiness using practice score {row['practice_score_avg']}% against target {row['passing_practice_score']}%."
+        },
+        {
+            "Agent": "Manager Insights Agent",
+            "Action": f"Generated support recommendation based on risk level: {row['Risk Level']}."
+        }
+    ]
+
+
+def detailed_risk_reasoning(row):
+    reasons = []
+
+    if row["practice_score_avg"] < row["passing_practice_score"]:
+        reasons.append(
+            f"Practice score is {row['practice_score_avg']}%, which is below the {row['passing_practice_score']}% readiness target."
+        )
+
+    if row["meeting_hours_per_week"] > 20:
+        reasons.append(
+            f"Meeting load is high at {row['meeting_hours_per_week']} hours per week."
+        )
+
+    if row["focus_hours_per_week"] < 12:
+        reasons.append(
+            f"Focus time is limited at {row['focus_hours_per_week']} hours per week."
+        )
+
+    if row["hours_studied"] < row["recommended_hours"]:
+        reasons.append(
+            f"Studied hours are {row['hours_studied']}, below the recommended {row['recommended_hours']} hours for {row['certification']}."
+        )
+
+    if not reasons:
+        reasons.append(
+            "Learner meets the main readiness indicators based on practice score, focus time, and recommended study hours."
+        )
+
+    return reasons
 
 def manager_insights_agent(team_df):
     total = len(team_df)
@@ -186,6 +240,11 @@ Certway AI helps enterprise teams prepare employees for certifications using
 multi-agent reasoning, synthetic workload signals, role-based learning paths,
 practice assessments, and manager readiness insights.
 """
+)
+
+st.warning(
+    "Demo Safety Notice: This application uses synthetic learner, workload, and certification data only. "
+    "No real employee data, customer data, credentials, or personally identifiable information is used."
 )
 
 # -----------------------------
@@ -259,8 +318,39 @@ elif page == "Learner Coach":
     for topic in path:
         st.write(f"✅ {topic}")
 
+    st.subheader("Multi-Agent Workflow Trace")
+
+    workflow = agent_workflow_trace(learner)
+
+    for step in workflow:
+        st.markdown(f"**{step['Agent']}**")
+        st.write(step["Action"])
+        st.write("⬇️")
+
+    st.divider()
+
     st.subheader("Readiness Reasoning")
-    st.info(readiness_summary(learner))
+
+    risk_reasons = detailed_risk_reasoning(learner)
+
+    st.info(f"Risk Level: {learner['Risk Level']}")
+
+    for reason in risk_reasons:
+        st.write(f"- {reason}")
+
+    if learner["Risk Level"] == "High Risk":
+        st.error(
+            "Recommendation: Delay exam attempt, reduce workload pressure if possible, "
+            "and schedule shorter daily study blocks."
+        )
+    elif learner["Risk Level"] == "Medium Risk":
+        st.warning(
+            "Recommendation: Continue preparation with weekly practice checks and targeted review of weak topics."
+        )
+    else:
+        st.success(
+            "Recommendation: Learner is close to ready. Complete one final practice assessment before the exam."
+        )
 
     st.subheader("Study Plan Generator Agent")
     study_plan = study_plan_agent(learner)
