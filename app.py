@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+from utils.azure_client import azure_ai_enabled, generate_ai_recommendation
 
 # -----------------------------
 # Page Configuration
@@ -227,6 +228,11 @@ df["Risk Level"] = df.apply(calculate_risk, axis=1)
 st.sidebar.title("🎓 Certway AI")
 st.sidebar.write("Multi-Agent Certification Coach")
 
+if azure_ai_enabled():
+    st.sidebar.success("Azure AI Foundry Mode: Enabled")
+else:
+    st.sidebar.info("Azure AI Foundry Mode: Local Prototype")
+
 page = st.sidebar.radio(
     "Choose a page",
     ["Overview", "Learner Coach", "Practice Assessment", "Manager Dashboard"]
@@ -355,6 +361,25 @@ elif page == "Learner Coach":
         st.success(
             "Recommendation: Learner is close to ready. Complete one final practice assessment before the exam."
         )
+
+    st.divider()
+
+    st.subheader("Microsoft Foundry AI Recommendation")
+
+    foundry_prompt = f"""
+    Learner: {learner['name']}
+    Role: {learner['role']}
+    Certification: {learner['certification']}
+    Practice Score: {learner['practice_score_avg']}%
+    Hours Studied: {learner['hours_studied']}
+    Meeting Hours/Week: {learner['meeting_hours_per_week']}
+    Focus Hours/Week: {learner['focus_hours_per_week']}
+    Risk Level: {learner['Risk Level']}
+
+    Generate a concise certification coaching recommendation.
+    """
+
+    st.write(generate_ai_recommendation(foundry_prompt))
 
     st.subheader("Study Plan Generator Agent")
     study_plan = study_plan_agent(learner)
