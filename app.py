@@ -31,6 +31,10 @@ df, certifications_df = load_data()
 # -----------------------------
 # Helper Functions / Agent Logic
 # -----------------------------
+def load_knowledge_document():
+    with open("docs/engineering_certification_guide.md", "r", encoding="utf-8") as file:
+        return file.read()
+    
 def calculate_risk(row):
     score = row["practice_score_avg"]
     meetings = row["meeting_hours_per_week"]
@@ -367,6 +371,18 @@ elif page == "Practice Assessment":
 
     selected_id = selected.split(" - ")[0]
     learner = df[df["learner_id"] == selected_id].iloc[0]
+
+    st.subheader("Grounded Knowledge Source")
+
+    knowledge_doc = load_knowledge_document()
+
+    with st.expander("View approved synthetic certification guide"):
+        st.markdown(knowledge_doc)
+
+    st.caption(
+        "Source: Engineering Certification Enablement Guide Synthetic Document. "
+        "This prototype uses synthetic approved content to demonstrate Foundry IQ-style grounded retrieval."
+    )
 
     st.subheader(f"Practice Questions for {learner['certification']}")
 
