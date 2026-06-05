@@ -517,21 +517,15 @@ def final_recommendation_summary(row):
 
 def render_final_recommendation_card(row):
     summary = final_recommendation_summary(row)
-    st.markdown(
-        f"""
-        <div class="recommendation-card">
-            <strong>Judge-facing final recommendation</strong>
-            <ul>
-                <li><strong>Readiness stance:</strong> {summary["Readiness stance"]}</li>
-                <li><strong>Key evidence:</strong> {summary["Key evidence"]}</li>
-                <li><strong>Grounded topics:</strong> {summary["Grounded topics"]}</li>
-                <li><strong>Recommended learner action:</strong> {summary["Recommended learner action"]}</li>
-                <li><strong>Manager handoff:</strong> {summary["Manager handoff"]}</li>
-            </ul>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    with st.container(border=True):
+        st.subheader("Judge-facing final recommendation")
+        st.markdown(f"**Readiness stance:** {summary['Readiness stance']}")
+        st.markdown(f"**Key evidence:** {summary['Key evidence']}")
+        st.markdown(f"**Grounded topics:** {summary['Grounded topics']}")
+        st.markdown(
+            f"**Recommended learner action:** {summary['Recommended learner action']}"
+        )
+        st.markdown(f"**Manager handoff:** {summary['Manager handoff']}")
 
 
 def study_plan_agent(row):
