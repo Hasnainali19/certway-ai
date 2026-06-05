@@ -177,12 +177,30 @@ def inject_custom_css():
             background: #f8fafc;
             border: 1px solid var(--certway-border);
             border-radius: 1rem;
+            color: #334155;
             padding: 1rem 1.1rem;
             box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
         }
 
+        .recommendation-card-title {
+            color: var(--certway-navy);
+            font-size: 1.15rem;
+            font-weight: 800;
+            margin-bottom: 0.75rem;
+        }
+
+        .recommendation-card ul {
+            margin: 0;
+            padding-left: 1.25rem;
+        }
+
         .recommendation-card li {
+            color: #334155;
             margin-bottom: 0.45rem;
+        }
+
+        .recommendation-card strong {
+            color: var(--certway-navy);
         }
 
         .safety-note {
@@ -517,15 +535,21 @@ def final_recommendation_summary(row):
 
 def render_final_recommendation_card(row):
     summary = final_recommendation_summary(row)
-    with st.container(border=True):
-        st.subheader("Judge-facing final recommendation")
-        st.markdown(f"**Readiness stance:** {summary['Readiness stance']}")
-        st.markdown(f"**Key evidence:** {summary['Key evidence']}")
-        st.markdown(f"**Grounded topics:** {summary['Grounded topics']}")
-        st.markdown(
-            f"**Recommended learner action:** {summary['Recommended learner action']}"
-        )
-        st.markdown(f"**Manager handoff:** {summary['Manager handoff']}")
+    st.markdown(
+        f"""
+        <div class="recommendation-card">
+            <div class="recommendation-card-title">Judge-facing final recommendation</div>
+            <ul>
+                <li><strong>Readiness stance:</strong> {summary["Readiness stance"]}</li>
+                <li><strong>Key evidence:</strong> {summary["Key evidence"]}</li>
+                <li><strong>Grounded topics:</strong> {summary["Grounded topics"]}</li>
+                <li><strong>Recommended learner action:</strong> {summary["Recommended learner action"]}</li>
+                <li><strong>Manager handoff:</strong> {summary["Manager handoff"]}</li>
+            </ul>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def study_plan_agent(row):
