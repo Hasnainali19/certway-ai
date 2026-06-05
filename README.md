@@ -1,6 +1,8 @@
 # Certway AI
 
-Certway AI is a Microsoft Foundry-ready multi-agent certification coach for enterprise learning and workforce readiness.
+Certway AI is a local Streamlit prototype for a Microsoft Foundry-ready multi-agent certification coach. It demonstrates grounded, synthetic-data reasoning for enterprise learning and workforce readiness.
+
+> **Azure AI Foundry status:** this project is currently a local prototype / Foundry-ready placeholder. It does **not** make live Azure model calls yet. No API keys, credentials, paid services, confidential data, or real employee data are required for the demo.
 
 The project helps employees prepare for role-based certifications by recommending learning paths, generating workload-aware study plans, creating practice assessments, estimating readiness risk, and giving managers team-level insights.
 
@@ -16,7 +18,7 @@ This project is designed for the Reasoning Agents challenge and demonstrates:
 - Grounded practice assessment using synthetic knowledge documents
 - Manager-level readiness insights
 - Safe synthetic data usage
-- Microsoft Foundry / Azure AI Foundry-ready architecture
+- Microsoft Foundry / Azure AI Foundry-ready placeholder architecture
 
 ## Problem
 
@@ -31,6 +33,19 @@ Organizations often struggle to manage internal certification programs because:
 ## Solution
 
 Certway AI uses multiple specialized agents to support employees and managers throughout the certification preparation process.
+
+## Project Architecture
+
+| Layer | Files | Purpose |
+| --- | --- | --- |
+| Streamlit app and UI pages | `app.py` | Provides Overview, Learner Coach, Practice Assessment, and Manager Dashboard pages. |
+| Synthetic learner data | `data/learners.csv` | Provides synthetic learner profiles, certification goals, practice scores, and study progress. |
+| Synthetic workload data | `data/workload_signals.csv` | Adds meeting load, focus capacity, and preferred learning slot signals. |
+| Certification metadata | `data/certifications.csv` | Stores role-to-certification mappings, recommended study hours, and readiness thresholds. |
+| Foundry IQ-style grounding source | `docs/engineering_certification_guide.md` | Acts as the approved synthetic guide used to extract grounded topics and source sections. |
+| Agent logic | Agent helper functions in `app.py` | Implements local Orchestrator, Learning Path, Readiness, Assessment, Study Plan, Engagement, and Manager Insights behavior. |
+| Agent prompt documentation | `prompts/agent_prompts.md` | Documents intended agent roles, responsibilities, and safety rules. |
+| Azure placeholder client | `utils/azure_client.py` | Provides local recommendation fallback and honest Foundry placeholder/config status. It does not call Azure models. |
 
 ## Multi-Agent Architecture
 
@@ -56,10 +71,11 @@ Summarizes team-level readiness, risk areas, and recommended manager actions.
 
 This prototype uses a synthetic certification guide as an approved knowledge source to demonstrate a Foundry IQ-style grounding pattern.
 
-<!-- The file:
-
 ```text
-docs/engineering_certification_guide.md -->
+docs/engineering_certification_guide.md
+```
+
+The Streamlit app parses this guide by role and certification, then shows grounded topics and source sections in the learning path and practice assessment.
 
 
 ## Azure AI Foundry Integration
@@ -73,9 +89,10 @@ utils/azure_client.py
 Current mode:
 
 * Local rule-based multi-agent prototype
-* Azure AI Foundry placeholder
+* Azure AI Foundry / Microsoft Foundry placeholder only
 * Safe fallback if Azure is not configured
 * Environment-based setup using `.env.example`
+* No live Azure model calls are made
 
 The environment template is provided in:
 
@@ -84,6 +101,35 @@ The environment template is provided in:
 ```
 
 Real Azure values should be stored in a local `.env` file and should never be committed to GitHub.
+
+## Reasoning Flow
+
+1. Load synthetic learner, workload, and certification metadata from CSV files.
+2. Parse the approved synthetic certification guide by role and certification.
+3. Select grounded learning topics and source sections for the learner's target certification.
+4. Compute readiness signals from practice score, study progress, meeting load, and focus capacity.
+5. Route the profile through the local multi-agent workflow:
+   - Orchestrator Agent
+   - Learning Path Curator Agent
+   - Readiness Reasoning Agent
+   - Assessment Agent
+   - Study Plan Generator Agent
+   - Engagement Agent
+   - Manager Insights Agent
+6. Present a judge-facing final recommendation that combines readiness stance, key evidence, grounded topics, learner action, and manager handoff.
+7. Keep all recommendations framed as coaching support, not a guarantee of certification success.
+
+## Judging Criteria Mapping
+
+| Hackathon criterion | How Certway AI addresses it |
+| --- | --- |
+| Accuracy & Relevance | Uses role, certification, practice score, study progress, workload signals, and certification-specific readiness thresholds. |
+| Reasoning & Multi-step Thinking | Shows readiness signals, agent responsibilities, evidence, decisions, and a final recommendation summary. |
+| Creativity & Originality | Combines certification coaching with workload-aware study planning and manager-ready support guidance. |
+| User Experience & Presentation | Provides a polished Streamlit UI with Overview, Learner Coach, Practice Assessment, and Manager Dashboard pages. |
+| Reliability & Safety | Uses synthetic data only, avoids secrets, includes human review language, and keeps Azure status honest. |
+| Foundry IQ-style grounding | Parses an approved synthetic guide and displays grounded topics and source sections for practice questions. |
+| Clear demo readiness | Includes a simple local setup path and a demo script for judges. |
 
 ## Synthetic Data
 
@@ -105,7 +151,7 @@ No real employee data, customer data, credentials, confidential data, or persona
 * Streamlit
 * Pandas
 * Plotly
-* Azure AI Foundry-ready architecture
+* Azure AI Foundry-ready placeholder architecture
 * GitHub
 * GitHub Copilot
 * VS Code
@@ -192,20 +238,19 @@ GitHub Copilot was used during development to support:
 * Debugging and code explanation
 * README drafting and refinement
 
-## Demo Flow
+## Demo Script
 
-A sample demo flow:
+A sample judge demo flow:
 
 1. Open the Streamlit app.
 2. View the overview dashboard.
-3. Select a learner in the Learner Coach page.
-4. Review the multi-agent workflow trace.
-5. Review the readiness reasoning and study plan.
-6. Open the Practice Assessment page.
-7. View the grounded synthetic certification guide.
-8. Review practice questions.
-9. Open the Manager Dashboard.
-10. Review team-level readiness and risk insights.
+3. Open **Learner Coach** and select a learner such as Taylor Kim or Alex Morgan.
+4. Review the readiness stance and the judge-facing final recommendation card.
+5. Open the **Reasoning Trace** tab and review each agent's responsibility, evidence, and decision.
+6. Open the **Study & Engagement Plan** tab to see workload-aware study guidance.
+7. Open the **Foundry Recommendation** tab and note that it is a local / Foundry-ready placeholder, not a live Azure call.
+8. Open **Practice Assessment** and review grounded questions with source sections from the synthetic guide.
+9. Open **Manager Dashboard** and review team-level readiness and manager action guidance.
 
 ## Project Status
 
@@ -213,9 +258,9 @@ Current version:
 
 * Working Streamlit MVP
 * Synthetic datasets added
-* Multi-agent reasoning trace added
-* Grounded knowledge source added
-* Azure AI Foundry placeholder added
+* Multi-agent reasoning trace with responsibilities, evidence, and decisions
+* Grounded knowledge source parsing and visible source sections
+* Azure AI Foundry placeholder status with no live Azure model calls
 * Ready for further Microsoft Foundry integration
 
 ## License

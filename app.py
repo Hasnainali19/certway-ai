@@ -173,6 +173,18 @@ def inject_custom_css():
             font-size: 0.92rem;
         }
 
+        .recommendation-card {
+            background: #f8fafc;
+            border: 1px solid var(--certway-border);
+            border-radius: 1rem;
+            padding: 1rem 1.1rem;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+        }
+
+        .recommendation-card li {
+            margin-bottom: 0.45rem;
+        }
+
         .safety-note {
             background: #fff7ed;
             border: 1px solid #fed7aa;
@@ -236,6 +248,7 @@ def render_agent_steps(workflow):
             f"""
             <div class="agent-step">
                 <div class="agent-step-title">{step["Agent"]}</div>
+                <div class="agent-step-copy"><strong>Responsibility:</strong> {step["Responsibility"]}</div>
                 <div class="agent-step-copy"><strong>Evidence:</strong> {step["Evidence"]}</div>
                 <div class="agent-step-copy"><strong>Decision:</strong> {step["Decision"]}</div>
             </div>
@@ -481,6 +494,46 @@ def readiness_decision(row):
     }
 
 
+def final_recommendation_summary(row):
+    decision = readiness_decision(row)
+    signal_df = readiness_signal_table(row)
+    attention_signals = signal_df[signal_df["Status"] == "Needs attention"]
+    grounded_topics = ", ".join(learning_path_agent(row))
+    engagement = engagement_agent(row)
+
+    if attention_signals.empty:
+        key_evidence = "All readiness signals are on track."
+    else:
+        key_evidence = "; ".join(attention_signals["Reasoning"].tolist())
+
+    return {
+        "Readiness stance": decision["Readiness stance"],
+        "Key evidence": key_evidence,
+        "Grounded topics": grounded_topics,
+        "Recommended learner action": decision["Next best action"],
+        "Manager handoff": engagement["Support suggestion"],
+    }
+
+
+def render_final_recommendation_card(row):
+    summary = final_recommendation_summary(row)
+    st.markdown(
+        f"""
+        <div class="recommendation-card">
+            <strong>Judge-facing final recommendation</strong>
+            <ul>
+                <li><strong>Readiness stance:</strong> {summary["Readiness stance"]}</li>
+                <li><strong>Key evidence:</strong> {summary["Key evidence"]}</li>
+                <li><strong>Grounded topics:</strong> {summary["Grounded topics"]}</li>
+                <li><strong>Recommended learner action:</strong> {summary["Recommended learner action"]}</li>
+                <li><strong>Manager handoff:</strong> {summary["Manager handoff"]}</li>
+            </ul>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def study_plan_agent(row):
     skills = learning_path_agent(row)
     preferred_slot = row["preferred_learning_slot"]
@@ -600,6 +653,7 @@ def agent_workflow_trace(row):
     return [
         {
             "Agent": "Orchestrator Agent",
+            "Responsibility": "Coordinate the learner profile across specialist agents and preserve a traceable workflow.",
             "Evidence": (
                 f"{row['name']} is preparing for {row['certification']} as a {row['role']}; "
                 f"{len(attention_signals)} of {len(signal_df)} readiness signals need attention."
@@ -611,16 +665,19 @@ def agent_workflow_trace(row):
         },
         {
             "Agent": "Learning Path Curator Agent",
+            "Responsibility": "Select certification topics from the approved synthetic guide for the learner role and certification.",
             "Evidence": f"Guide source {source_summary} produced these topics: {topics}.",
             "Decision": "Use extracted guide topics as the learning path before any CSV fallback.",
         },
         {
             "Agent": "Readiness Reasoning Agent",
+            "Responsibility": "Compare learner signals against local readiness, study, workload, and focus thresholds.",
             "Evidence": format_signal_evidence(signal_df),
             "Decision": f"Classify current stance as {row['Risk Level']} because {decision['Primary constraint'].lower()}",
         },
         {
             "Agent": "Assessment Agent",
+            "Responsibility": "Generate practice prompts only from grounded guide topics and show source context.",
             "Evidence": (
                 f"{len(topic_records)} grounded topic(s) available from {source_summary}; "
                 f"practice score is {row['practice_score_avg']}% against a {row['passing_practice_score']}% target."
@@ -629,6 +686,7 @@ def agent_workflow_trace(row):
         },
         {
             "Agent": "Study Plan Generator Agent",
+            "Responsibility": "Turn readiness gaps and workload capacity into a practical study plan.",
             "Evidence": (
                 f"{row['focus_hours_per_week']} focus hours/week, "
                 f"{row['meeting_hours_per_week']} meeting hours/week, preferred slot: {row['preferred_learning_slot']}; "
@@ -638,11 +696,13 @@ def agent_workflow_trace(row):
         },
         {
             "Agent": "Engagement Agent",
+            "Responsibility": "Recommend sustainable timing and support strategies based on workload signals.",
             "Evidence": f"Risk level is {row['Risk Level']} with workload and focus constraints included.",
             "Decision": engagement["Support suggestion"],
         },
         {
             "Agent": "Manager Insights Agent",
+            "Responsibility": "Translate learner-level risk into manager-safe support guidance.",
             "Evidence": (
                 f"Manager handoff uses learner-level risk ({row['Risk Level']}) and primary constraint: "
                 f"{decision['Primary constraint']}"
@@ -845,12 +905,14 @@ if page == "Overview":
             color_discrete_map=RISK_COLORS,
             category_orders={"Risk Level": RISK_ORDER},
         )
-        score_chart.add_hline(
-            y=75,
-            line_dash="dot",
-            annotation_text="Readiness target",
-            annotation_position="top left",
-        )
+        readiness_targets = sorted(df["passing_practice_score"].dropna().unique())
+        for target in readiness_targets:
+            score_chart.add_hline(
+                y=target,
+                line_dash="dot",
+                annotation_text=f"Readiness target ({target}%)",
+                annotation_position="top left",
+            )
         st.plotly_chart(score_chart, use_container_width=True)
 
     st.subheader("Learner Dataset")
@@ -894,7 +956,11 @@ elif page == "Learner Coach":
         with card_col1:
             render_metric_card("Role", learner["role"], learner["certification"])
         with card_col2:
-            render_metric_card("Practice Score", f"{learner['practice_score_avg']}%", "Readiness target: 75%")
+            render_metric_card(
+                "Practice Score",
+                f"{learner['practice_score_avg']}%",
+                f"Readiness target: {learner['passing_practice_score']}%",
+            )
 
         card_col3, card_col4 = st.columns(2)
         with card_col3:
@@ -909,6 +975,10 @@ elif page == "Learner Coach":
         st.info(decision["Primary constraint"])
         st.write(decision["Next best action"])
         st.caption(decision["Human review note"])
+
+    st.divider()
+
+    render_final_recommendation_card(learner)
 
     st.divider()
 
@@ -983,6 +1053,10 @@ elif page == "Practice Assessment":
     )
 
     st.subheader(f"Practice Questions for {learner['certification']}")
+    st.info(
+        "Practice questions are generated only from the approved synthetic certification guide. "
+        "Each row shows the grounded topic and source section used for the question."
+    )
 
     questions = assessment_agent(learner)
     st.dataframe(questions, use_container_width=True, hide_index=True)
@@ -991,11 +1065,13 @@ elif page == "Practice Assessment":
 
     if learner["practice_score_avg"] >= learner["passing_practice_score"]:
         st.success(
-            "This learner is close to ready. Recommend one final practice assessment before exam attempt."
+            f"This learner is close to ready against the {learner['passing_practice_score']}% readiness target. "
+            "Recommend one final practice assessment before exam attempt."
         )
     else:
         st.warning(
-            "This learner should continue studying before attempting the certification exam."
+            f"This learner is below the {learner['passing_practice_score']}% readiness target and should "
+            "continue studying before attempting the certification exam."
         )
 
     st.subheader("Assessment Reasoning")
