@@ -2,9 +2,16 @@
 
 Certway AI is a local Streamlit prototype for a Microsoft Foundry-ready multi-agent certification coach. It demonstrates grounded, synthetic-data reasoning for enterprise learning and workforce readiness.
 
-> **Azure AI Foundry status:** this project is currently a local prototype / Foundry-ready placeholder. It does **not** make live Azure model calls yet. No API keys, credentials, paid services, confidential data, or real employee data are required for the demo.
+> **Azure AI Foundry status:** this project is currently a local prototype / Foundry-ready placeholder. It does **not** make live Azure model calls yet. No API Keys, Credentials, Paid Services, Confidential Data, or Real Employee Data are required for the demo.
 
 The project helps employees prepare for role-based certifications by recommending learning paths, generating workload-aware study plans, creating practice assessments, estimating readiness risk, and giving managers team-level insights.
+
+## Demo 
+```markdown 
+Demo video : https://drive.google.com/file/d/12N4C69H54f1Duj0LvJgq0W4t-r07iPx6/view?usp=sharing
+
+Repository: https://github.com/Hasnainali19/certway-ai
+
 
 ## Hackathon Track
 
