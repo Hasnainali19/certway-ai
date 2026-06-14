@@ -7,12 +7,12 @@ Certway AI is a local Streamlit prototype for a Microsoft Foundry-ready multi-ag
 The project helps employees prepare for role-based certifications by recommending learning paths, generating workload-aware study plans, creating practice assessments, estimating readiness risk, and giving managers team-level insights.
 
 ## Demo 
-```markdown 
+```markdown
 Demo video : https://drive.google.com/file/d/12N4C69H54f1Duj0LvJgq0W4t-r07iPx6/view?usp=sharing
 
 Repository: https://github.com/Hasnainali19/certway-ai
 
-
+```
 ## Hackathon Track
 
 **Agents League Hackathon — Reasoning Agents Track**
